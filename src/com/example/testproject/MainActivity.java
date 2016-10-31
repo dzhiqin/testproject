@@ -2,17 +2,21 @@ package com.example.testproject;
 
 
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -46,36 +50,71 @@ public class MainActivity extends Activity {
 		View button=inflater.inflate(R.layout.my_button, null);
 		mLayout.addView(button);
 		NetworkUtil.showCheckNetworkDialog(context, mHandler);
+		importApk();
 		if(ApplicationUtil.isAvailable(getApplicationContext(), "com.example.customcitydatabase")){
 			Intent intent=new Intent();
 			ComponentName componentName=new ComponentName("com.example.customcitydatabase","com.example.customcitydatabase.MainActivity");
 			intent.setComponent(componentName);
 			startActivityForResult(intent,RESULT_OK);
+			
 		}else{
-			//如果未安装指定app就从指定网址下载
-			Uri uri=Uri.parse("market://details?id=com.tencent.mm");
+			//如果未安装指定app就从指定网址下载,或者从手机内安装
+			/*Uri uri=Uri.parse("market://details?id=com.tencent.mm");
 			Intent i=new Intent(Intent.ACTION_VIEW,uri);
-			startActivity(i);
+			startActivity(i);*/
+			
+			new AlertDialog.Builder(context).setMessage("未安装指定app")
+				.setPositiveButton("去安装", new DialogInterface.OnClickListener() {
+					
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						String filePath="/data"+Environment.getDataDirectory().getAbsolutePath()
+								+"/com.example.testproject/files/customcitydatabase.apk";
+						Intent i=new Intent(Intent.ACTION_VIEW);
+						i.setDataAndType(Uri.parse("file://"+filePath), "application/vnd.android.package-archive");
+						startActivity(i);
+						
+					}
+				}).setNegativeButton("取消", new DialogInterface.OnClickListener() {
+					
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						// TODO 自动生成的方法存根
+						
+					}
+				}).show();
 		}
-		importApk();
+		
 	}
 	private void importApk(){
-		Toast.makeText(MainActivity.this,"importApplication", Toast.LENGTH_SHORT).show();
-		try{
-			InputStream in=getResources().openRawResource(R.raw.customcitydatabase);
-			FileOutputStream fos=this.openFileOutput("customcitydatabase.apk", Context.MODE_WORLD_READABLE);
-			byte[] buffer=new byte[1024];
-			int count=0;
-			while((count=in.read(buffer))>0){
-				fos.write(buffer,0,count);
+		String filePath="/data"+Environment.getDataDirectory().getAbsolutePath()
+				+"/com.example.testproject/files/customcitydatabase.apk";
+		if(!new File(filePath).exists())
+		{
+			//如果apk文件不存在，就从raw文件夹中导入
+			try{
+				InputStream in=getResources().openRawResource(R.raw.customcitydatabase);
+				//FileOutputStream fos=this.openFileOutput("customcitydatabase.apk", Context.MODE_WORLD_READABLE);
+				//FileOutputStream fos=new FileOutputStream(filePath);//要先定义出file文件名，才能更改mode
+				File file =new File(filePath);				
+				FileOutputStream fos=new FileOutputStream(file);
+				byte[] buffer=new byte[1024];
+				int count=0;
+				while((count=in.read(buffer))>0){
+					fos.write(buffer,0,count);
+				}
+				Runtime.getRuntime().exec("chmod 777 "+file);
+				fos.close();
+				in.close();
+			}catch(FileNotFoundException e){
+				e.printStackTrace();
+			}catch(IOException e){
+				e.printStackTrace();
 			}
-			fos.close();
-			in.close();
-		}catch(FileNotFoundException e){
-			e.printStackTrace();
-		}catch(IOException e){
-			e.printStackTrace();
+		}else{
+			Log.v("testproject", "file already exist");
 		}
+		
 		
 	}
 
